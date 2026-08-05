@@ -159,40 +159,40 @@ BasisSet parse_basis_file(const std::string& filename) {
 }
 
 BasisSet load_basis_set(const std::string& name) {
-    
-    // Try different paths and name variations
-    std::vector<std::string> name_variations = {
-        name,
-        // Convert lowercase to various formats
-        "sto-3g"  // special case
-    };
-    
-    // Build path list
+
+    // Build path list - relative paths first (for portable use on iOS)
     std::vector<std::string> paths = {
         "basis/" + name + ".dat",
         "../basis/" + name + ".dat",
+        "./basis/" + name + ".dat",
         "/workspace/project/pyscf_cpp/basis/" + name + ".dat",
     };
-    
+
     // Handle special basis set names
     std::string filename;
     if (name == "sto-3g") {
         filename = "sto-3g.dat";
         paths.push_back("/workspace/project/pyscf_cpp/basis/" + filename);
+        // iOS portable: also check relative paths
+        paths.push_back("sto-3g.dat");
+        paths.push_back("../sto-3g.dat");
     } else if (name == "6-31g" || name == "6-31G") {
         filename = "6-31Gss.dat";
         paths.push_back("/workspace/project/pyscf_cpp/basis/" + filename);
+        paths.push_back("6-31Gss.dat");
     } else if (name == "6-31g*" || name == "6-31G*") {
         filename = "6-31G-polarization-d.dat";
         paths.push_back("/workspace/project/pyscf_cpp/basis/" + filename);
+        paths.push_back("6-31G-polarization-d.dat");
     } else {
         filename = name + ".dat";
         paths.push_back("/workspace/project/pyscf_cpp/basis/" + filename);
+        paths.push_back(filename);
     }
-    
+
     // Also check PySCF's basis directory
     paths.push_back("/workspace/project/pyscf/pyscf/gto/basis/" + filename);
-    
+
     for (const auto& path : paths) {
         std::ifstream file(path);
         if (file.is_open()) {
@@ -200,7 +200,7 @@ BasisSet load_basis_set(const std::string& name) {
             return parse_basis_file(path);
         }
     }
-    
+
     return BasisSet();
 }
 
