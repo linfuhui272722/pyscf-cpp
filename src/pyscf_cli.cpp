@@ -45,7 +45,7 @@ std::shared_ptr<Molecule> parse_xyz(const std::string& filename) {
         int atomic_num = element_atomic_number(element);
         if (atomic_num > 0) {
             // Convert Angstrom to Bohr
-            mol->add_atom(atomic_num, x * 1.889726, y * 1.889726, z * 1.889726);
+            mol->add_atom(atomic_num, x, y, z);
         }
     }
     
@@ -74,7 +74,7 @@ std::shared_ptr<Molecule> parse_coordinates(const std::string& input) {
             int atomic_num = element_atomic_number(element);
             if (atomic_num > 0) {
                 // Convert Angstrom to Bohr
-                mol->add_atom(atomic_num, x * 1.889726, y * 1.889726, z * 1.889726);
+                mol->add_atom(atomic_num, x, y, z);
                 found_coords = true;
             }
         }
@@ -131,7 +131,7 @@ std::shared_ptr<Molecule> interactive_input() {
         if (iss >> element >> x >> y >> z) {
             int atomic_num = element_atomic_number(element);
             if (atomic_num > 0) {
-                mol->add_atom(atomic_num, x * 1.889726, y * 1.889726, z * 1.889726);
+                mol->add_atom(atomic_num, x, y, z);
                 std::cout << "  Added " << element << " at (" << x << ", " << y << ", " << z << ")\n";
             } else {
                 std::cerr << "  Unknown element: " << element << "\n";
@@ -159,7 +159,8 @@ int main(int argc, char** argv) {
         } else if (arg == "-f" && i + 1 < argc) {
             input_file = argv[++i];
         } else if (arg == "-c" && i + 1 < argc) {
-            coordinates = argv[++i];
+            if (!coordinates.empty()) coordinates += "\n";
+            coordinates += argv[++i];
         } else if (arg == "-i") {
             interactive = true;
         } else if (arg == "-m" && i + 1 < argc) {
