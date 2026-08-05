@@ -3,6 +3,9 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 extern "C" {
 void dgemm_(char* transa, char* transb, int* m, int* n, int* k,
@@ -350,6 +353,9 @@ std::vector<double> RKS::compute_j_matrix(const std::vector<double>& dm) {
     double* eri = integral_engine_->compute_eri(*mol_, eri_size);
     
     // J_ij = sum_kl P_kl * (ij|kl)
+    #ifdef _OPENMP
+    #pragma omp parallel for collapse(2)
+    #endif
     for (int i = 0; i < nbf; ++i) {
         for (int j = 0; j < nbf; ++j) {
             double sum = 0.0;
@@ -382,6 +388,9 @@ std::vector<double> RKS::compute_k_matrix(const std::vector<double>& dm) {
     // ERI is stored as (ij|kl) format: idx = ((i*nbf+j)*nbf+k)*nbf+l
     // K_ij = sum_kl P_kl * eri[(ik|jl)]
     // For (ik|jl), we need to access eri[(i*nbf+k)*nbf+j)*nbf+l]
+    #ifdef _OPENMP
+    #pragma omp parallel for collapse(2)
+    #endif
     for (int i = 0; i < nbf; ++i) {
         for (int j = 0; j < nbf; ++j) {
             double sum = 0.0;

@@ -1,4 +1,7 @@
 #include "gto_integrals.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include "molecule.h"
 #include <cmath>
 #include <cstring>

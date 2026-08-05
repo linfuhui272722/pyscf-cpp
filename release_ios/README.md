@@ -24,6 +24,25 @@ Universal quantum chemistry calculator for iOS (arm64).
 ./pyscf -h
 ```
 
+## Multi-threading
+
+PySCF automatically uses multiple CPU cores for computation. The Accelerate
+framework provides parallelized BLAS operations.
+
+**For OpenMP-enabled builds** (if available):
+```bash
+# Use 4 threads
+./pyscf -c "H 0 0 0" -c "H 0.74 0 0" -j 4
+
+# Use all available cores (default)
+./pyscf -c "H 0 0 0" -c "H 0.74 0 0" -j 0
+```
+
+**Performance tips**:
+- Larger molecules benefit more from multi-threading
+- 6-31G** and cc-pVDZ basis sets can use multiple cores effectively
+- For very small molecules, single-threaded may be faster due to overhead
+
 ## Basis Sets
 
 **Important**: If basis set name contains `*` or `+`, use quotes:
@@ -50,6 +69,7 @@ Available basis sets:
 
 ```bash
 -b <basis>    Basis set (default: sto-3g)
+-j <threads>  Number of threads (default: auto)
 -o            Run geometry optimization
 -B            Compute Mayer bond orders
 -x <func>     XC functional (b3lyp, hf, lda)

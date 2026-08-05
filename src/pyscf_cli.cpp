@@ -102,6 +102,7 @@ void print_usage(const char* program) {
     std::cout << "  -o            Run geometry optimization\n";
     std::cout << "  -B            Compute Mayer bond orders\n";
     std::cout << "  -v            Verbose output\n";
+    std::cout << "  -j <threads>  Number of threads (default: auto)\n";
     std::cout << "  -h            Show this help\n\n";
     std::cout << "Examples:\n";
     std::cout << "  " << program << " -f water.xyz -b cc-pvdz\n";
@@ -146,6 +147,7 @@ std::shared_ptr<Molecule> interactive_input() {
 
 int main(int argc, char** argv) {
     std::string input_file, coordinates, method = "rks", xc = "b3lyp", basis = "sto-3g";
+    int num_threads = 0;  // 0 = auto
     double conv_tol = 1e-6;
     int max_iter = 100;
     bool do_optimize = false, do_bond = false, verbose = false, interactive = false;
