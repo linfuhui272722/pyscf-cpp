@@ -186,6 +186,10 @@ void Molecule::set_basis(const std::string& basis_name) {
         base_filename = "sto-3g";
     } else if (base_basis == "6-311G") {
         base_filename = "6-311G";
+    } else if (base_basis.find("CC-") == 0 || base_basis.find("CC_P") == 0) {
+        // Convert CC-PVTZ -> cc-pvtz, CC-PVDZ -> cc-pvdz, etc.
+        base_filename = base_basis;
+        std::transform(base_filename.begin(), base_filename.end(), base_filename.begin(), ::tolower);
     }
     
     
