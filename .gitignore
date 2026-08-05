@@ -1,0 +1,36 @@
+# Build directories
+build/
+*.o
+*.a
+*.so
+*.dylib
+
+# Executables
+pyscf_demo
+pyscf_h2o_demo
+pyscf_optimize_demo
+pyscf_bond_demo
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# Archives
+*.zip
+*.tar.gz
+*.tar
