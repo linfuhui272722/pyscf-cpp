@@ -185,9 +185,7 @@ int main(int argc, char** argv) {
         }
     }
     
-    std::cout << "==================================================\n";
-    std::cout << "   PySCF C++ - Universal Quantum Chemistry\n";
-    std::cout << "==================================================\n\n";
+    std::cout << "=== PySCF C++ ===\n";
     
     std::shared_ptr<Molecule> mol;
     
@@ -216,14 +214,14 @@ int main(int argc, char** argv) {
     }
     
     // Load basis set
-    std::cout << "Loading basis set: " << basis << "\n";
+    std::cout << "Basis: " << basis << "\n";
     mol->set_basis(basis);
     
-    std::cout << "\n--- Molecule Summary ---\n";
-    std::cout << "Atoms: " << mol->num_atoms() << "\n";
-    std::cout << "Electrons: " << mol->num_electrons() << "\n";
-    std::cout << "Basis functions: " << mol->num_basis_functions() << "\n";
-    std::cout << "Nuclear repulsion: " << mol->nuclear_repulsion_energy() << " Eh\n";
+    std::cout << "\n[Molecule]\n";
+    std::cout << "  Atoms: " << mol->num_atoms() << "\n";
+    std::cout << "  Electrons: " << mol->num_electrons() << "\n";
+    std::cout << "  Basis functions: " << mol->num_basis_functions() << "\n";
+    std::cout << "  Nuclear repulsion: " << mol->nuclear_repulsion_energy() << " Eh\n";
     
     if (mol->num_basis_functions() == 0) {
         std::cerr << "\nError: No basis functions loaded!\n";
@@ -231,9 +229,9 @@ int main(int argc, char** argv) {
     }
     
     // Run SCF calculation
-    std::cout << "\n--- SCF Calculation ---\n";
-    std::cout << "Method: " << method << "\n";
-    std::cout << "XC Functional: " << xc << "\n";
+    std::cout << "\n[SCF]\n";
+    std::cout << "  Method: " << method << "\n";
+    std::cout << "  Functional: " << xc << "\n";
     
     auto scf = std::make_shared<dft::RKS>(mol);
     scf->set_xc_functional(xc);
@@ -246,27 +244,27 @@ int main(int argc, char** argv) {
     
     auto result = scf->compute();
     
-    std::cout << "\n--- Results ---\n";
-    std::cout << "Converged: " << (result.converged ? "Yes" : "No") << "\n";
-    std::cout << "Iterations: " << result.iterations << "\n";
-    std::cout << "Total energy: " << result.energy << " Eh\n";
+    std::cout << "\n[Results]\n";
+    std::cout << "  Converged: " << (result.converged ? "Yes" : "No") << "\n";
+    std::cout << "  Iterations: " << result.iterations << "\n";
+    std::cout << "  Energy: " << result.energy << " Eh\n";
     std::cout << "             " << result.energy * 27.2114 << " eV\n";
     std::cout << "Electronic energy: " << scf->get_electronic_energy() << " Eh\n";
-    std::cout << "Nuclear repulsion: " << scf->get_nuclear_repulsion() << " Eh\n";
+    std::cout << "  Nuclear repulsion: " << scf->get_nuclear_repulsion() << " Eh\n";
     
     // Geometry optimization
     if (do_optimize) {
-        std::cout << "\n--- Geometry Optimization ---\n";
+        std::cout << "\n[Geometry Optimization]\n";
         geom::BFGSOptimizer opt;
         geom::OptConvergence conv;
         conv.max_iterations = 50;
         opt.set_convergence(conv);
         auto opt_result = opt.optimize(scf, mol);
         
-        std::cout << "Optimized energy: " << opt_result.final_energy << " Eh\n";
-        std::cout << "Converged: " << (opt_result.converged ? "Yes" : "No") << "\n";
-        std::cout << "Iterations: " << opt_result.iterations << "\n\n";
-        std::cout << "Optimized coordinates (Angstrom):\n";
+        std::cout << "  Energy: " << opt_result.final_energy << " Eh\n";
+        std::cout << "  Converged: " << (opt_result.converged ? "Yes" : "No") << "\n";
+        std::cout << "  Iterations: " << opt_result.iterations << "\n\n";
+        std::cout << "Optimized geometry:\n";
         for (int i = 0; i < mol->num_atoms(); ++i) {
             const auto& atom = mol->get_atom(i);
             std::cout << "  " << element_symbol(atom.atomic_number)
@@ -278,7 +276,7 @@ int main(int argc, char** argv) {
     
     // Mayer bond order analysis
     if (do_bond) {
-        std::cout << "\n--- Mayer Bond Order Analysis ---\n";
+        std::cout << "\n[Mayer Bond Orders]\n";
         auto bond_result = bond::analyze_bonds(scf, mol);
         
         for (const auto& b : bond_result.bonds) {
@@ -292,9 +290,9 @@ int main(int argc, char** argv) {
         }
     }
     
-    std::cout << "\n==================================================\n";
-    std::cout << "Calculation complete!\n";
-    std::cout << "==================================================\n";
+    std::cout << "\n---";
+    std::cout << "Done.\n";
+    // footer
     
     return result.converged ? 0 : 1;
 }

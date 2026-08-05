@@ -58,7 +58,7 @@ void RKS::initialize_matrices() {
 
 void RKS::compute_one_electron_integrals() {
     if (options_.verbose) {
-        std::cout << "Computing one-electron integrals with libcint...\n";
+        // Computing integrals silently
     }
     
     // Use libcint integral engine for accurate integrals
@@ -67,7 +67,7 @@ void RKS::compute_one_electron_integrals() {
     integral_engine_->compute_nuclear(*mol_, nuclear_matrix_.data());
     
     if (options_.verbose) {
-        std::cout << "Integrals computed successfully.\n";
+        // Integrals done
     }
 }
 
@@ -127,11 +127,11 @@ SCFResult RKS::compute() {
     int n_occupied = n_electrons / 2;
     
     if (options_.verbose) {
-        std::cout << "Starting SCF calculation...\n";
-        std::cout << "Number of atoms: " << mol_->num_atoms() << "\n";
-        std::cout << "Number of basis functions: " << nbf << "\n";
-        std::cout << "Number of electrons: " << n_electrons << "\n";
-        std::cout << "Nuclear repulsion energy: " << nuc_energy_ << "\n";
+        // SCF starting
+        // Number of atoms: " << mol_->num_atoms() << "\n";
+        // Number of basis functions: " << nbf << "\n";
+        // Number of electrons: " << n_electrons << "\n";
+        // Nuclear repulsion energy: " << nuc_energy_ << "\n";
     }
     
     // Initialize
