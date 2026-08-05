@@ -122,6 +122,9 @@ void RKS::generalized_eig(const std::vector<double>& matrix,
 SCFResult RKS::compute() {
     SCFResult result;
     
+    // Update nuclear repulsion energy when coordinates change
+    nuc_energy_ = mol_->nuclear_repulsion_energy();
+
     int nbf = mol_->num_basis_functions();
     int n_electrons = mol_->num_electrons();
     int n_occupied = n_electrons / 2;
