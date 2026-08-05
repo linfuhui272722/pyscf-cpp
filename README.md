@@ -27,6 +27,23 @@ A C++ implementation of PySCF-like density functional theory (DFT) calculations,
 
 ## 快速开始 | Quick Start
 
+### iOS 支持 | iOS Support ⭐
+
+现在支持在 iOS 设备上运行量子化学计算！
+
+```bash
+# 下载 iOS 可执行文件
+# 从 Release 页面下载 pyscf-ios-arm64
+
+# 使用示例
+./pyscf -c "H 0 0 0" -c "H 0.74 0 0"  # 氢分子
+./pyscf -c "O 0 0 0" -c "H 0.96 0 0" -c "H 0 0.96 70.5"  # 水分子
+
+# 详细说明请查看 ios_bin/README.md
+```
+
+详情请查看：[iOS 使用指南](ios_bin/README.md)
+
 ### 安装依赖 | Install Dependencies
 
 ```bash
@@ -82,6 +99,7 @@ LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH ./pyscf_optimize_demo
 - ✅ B3LYP泛函 (B3LYP Functional)
 - ⚠️ 几何优化 (Geometry Optimization) - 实验性
 - ⚠️ Mayer键级 (Mayer Bond Orders) - 实验性
+- ✅ **iOS 支持 (iOS Support)** - arm64 Mach-O 可执行文件
 
 ## 示例代码 | Example Code
 

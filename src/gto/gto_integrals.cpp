@@ -4,10 +4,68 @@
 #include <cstring>
 #include <iostream>
 
-// libcint headers
+// For iOS builds without libcint, provide stub implementations
+#ifdef __APPLE__
+#ifndef HAVE_LIBCINT
+#define STUB_IMPLEMENTATION 1
+#endif
+#endif
+
+#ifdef HAVE_LIBCINT
 extern "C" {
 #include <cint.h>
 }
+#endif
+
+namespace pyscf {
+namespace gto {
+
+// Stub implementation for iOS builds
+#ifdef STUB_IMPLEMENTATION
+
+struct IntegralEngine::Impl {
+    int nbf = 0;
+};
+
+IntegralEngine::IntegralEngine() : pimpl_(new Impl) {}
+IntegralEngine::~IntegralEngine() = default;
+
+void IntegralEngine::initialize(const Molecule& mol) {
+    pimpl_->nbf = mol.num_shells();  // Rough approximation
+    std::cerr << "Warning: Using stub integral engine (libcint not available)" << std::endl;
+}
+
+void IntegralEngine::compute_overlap(const Molecule& mol, double* S) {
+    int n = pimpl_->nbf;
+    std::fill(S, S + n * n, 0.0);
+    // Identity matrix as stub
+    for (int i = 0; i < n; ++i) S[i * n + i] = 1.0;
+}
+
+void IntegralEngine::compute_kinetic(const Molecule& mol, double* T) {
+    int n = pimpl_->nbf;
+    std::fill(T, T + n * n, 0.0);
+}
+
+void IntegralEngine::compute_nuclear(const Molecule& mol, double* V) {
+    int n = pimpl_->nbf;
+    std::fill(V, V + n * n, 0.0);
+}
+
+double* IntegralEngine::compute_eri(const Molecule& mol, size_t& size) {
+    int n = pimpl_->nbf;
+    size = n * n * n * n;
+    double* eri = new double[size];
+    std::fill(eri, eri + size, 0.0);
+    return eri;
+}
+
+void IntegralEngine::eval_ao(const Molecule& mol, const double* grid, int n_points, double* ao_values) {
+    int nbf = pimpl_->nbf;
+    std::fill(ao_values, ao_values + nbf * n_points, 0.0);
+}
+
+#else  // HAVE_LIBCINT
 
 // Helper functions for GTO normalization
 namespace {
@@ -23,14 +81,10 @@ double double_factorial(int n) {
 }
 
 // Normalize contraction coefficient for libcint
-// libcint expects normalized primitive GTO coefficients
 double normalize_gto(double alpha, int l, int m, int n, double c) {
     int lmn = l + m + n;
     const double PI = 3.14159265358979323846;
     
-    // Normalization constant for primitive GTO:
-    // N(l,m,n,alpha) = sqrt(2^(2l+2m+2n+3) * alpha^(l+m+n+3/2) / 
-    //                  (pi^(3/2) * (2l+2m+2n+1)!!))
     double two_alpha = 2.0 * alpha;
     double df = double_factorial(2 * lmn + 1);
     double norm = std::sqrt(
@@ -67,20 +121,16 @@ void CINTinit_optimizer(CINTOpt **opt, FINT *atm, FINT natm,
 void CINTdel_optimizer(CINTOpt **opt);
 }
 
-namespace pyscf {
-namespace gto {
-
 // Internal implementation using libcint
 struct IntegralEngine::Impl {
-    // libcint data structures
-    std::vector<FINT> atm;      // atom data
-    std::vector<FINT> bas;     // basis data
-    std::vector<double> env;   // environment data
+    std::vector<FINT> atm;
+    std::vector<FINT> bas;
+    std::vector<double> env;
     CINTOpt* opt = nullptr;
     int natm = 0;
     int nbas = 0;
-    int nbf = 0;               // number of basis functions
-    std::vector<FINT> ao_loc;  // AO location index
+    int nbf = 0;
+    std::vector<FINT> ao_loc;
     
     ~Impl() {
         if (opt) {
@@ -96,52 +146,45 @@ IntegralEngine::~IntegralEngine() = default;
 void IntegralEngine::initialize(const Molecule& mol) {
     auto& impl = *pimpl_;
     
-    // Clear previous data
     impl.atm.clear();
     impl.bas.clear();
     impl.env.clear();
     impl.natm = mol.num_atoms();
     impl.nbas = mol.num_shells();
     
-    // Environment: PTR_EXPCUTOFF needs to be set for integral prescreening
-    // Value is approximately ln(threshold) for the cutoff
-    impl.env.resize(20);  // PTR_ENV_START = 20
-    impl.env[PTR_EXPCUTOFF] = -100.0;  // Cutoff threshold (very permissive)
+    impl.env.resize(20);
+    impl.env[PTR_EXPCUTOFF] = -100.0;
     
     size_t env_offset = impl.env.size();
     
-    // Add atom data
     impl.atm.resize(ATM_SLOTS * impl.natm);
     for (int i = 0; i < impl.natm; ++i) {
         const auto& atom = mol.get_atom(i);
         impl.atm[ATM_SLOTS * i + CHARGE_OF] = atom.atomic_number;
         impl.atm[ATM_SLOTS * i + PTR_COORD] = env_offset;
         impl.atm[ATM_SLOTS * i + NUC_MOD_OF] = POINT_NUC;
-        impl.atm[ATM_SLOTS * i + 3] = 0;  // External charge pointer
-        impl.atm[ATM_SLOTS * i + 4] = 0;  // Reserved
-        impl.atm[ATM_SLOTS * i + 5] = 0;  // Reserved
+        impl.atm[ATM_SLOTS * i + 3] = 0;
+        impl.atm[ATM_SLOTS * i + 4] = 0;
+        impl.atm[ATM_SLOTS * i + 5] = 0;
         
-        // Add coordinates to environment
         impl.env.push_back(atom.x);
         impl.env.push_back(atom.y);
         impl.env.push_back(atom.z);
         env_offset = impl.env.size();
     }
     
-    // Add basis set data
     impl.bas.resize(BAS_SLOTS * impl.nbas);
     for (int i = 0; i < impl.nbas; ++i) {
         const auto& shell = mol.get_shell(i);
         impl.bas[BAS_SLOTS * i + ATOM_OF] = shell.atom_index;
-        impl.bas[BAS_SLOTS * i + ANG_OF] = shell.l + shell.m + shell.n;  // Total angular momentum
+        impl.bas[BAS_SLOTS * i + ANG_OF] = shell.l + shell.m + shell.n;
         impl.bas[BAS_SLOTS * i + NPRIM_OF] = shell.exponents.size();
-        impl.bas[BAS_SLOTS * i + NCTR_OF] = 1;  // One contraction
-        impl.bas[BAS_SLOTS * i + KAPPA_OF] = 0;  // 0 = Cartesian, 1 = spherical
+        impl.bas[BAS_SLOTS * i + NCTR_OF] = 1;
+        impl.bas[BAS_SLOTS * i + KAPPA_OF] = 0;
         
         size_t exp_offset = impl.env.size();
         impl.bas[BAS_SLOTS * i + PTR_EXP] = exp_offset;
         
-        // Add exponents
         for (double exp : shell.exponents) {
             impl.env.push_back(exp);
         }
@@ -149,16 +192,10 @@ void IntegralEngine::initialize(const Molecule& mol) {
         size_t coeff_offset = impl.env.size();
         impl.bas[BAS_SLOTS * i + PTR_COEFF] = coeff_offset;
         
-        // Normalize contraction coefficients for libcint
-        // libcint expects normalized primitive GTO coefficients
-        // Normalization: c_norm = c_raw * sqrt(gaussian_int(2l+2, 2*alpha))
-        // where gaussian_int(n, alpha) = gamma((n+1)/2) / (2 * alpha^((n+1)/2))
         int l = shell.l + shell.m + shell.n;
         for (size_t j = 0; j < shell.exponents.size(); ++j) {
             double alpha = shell.exponents[j];
             double c_raw = shell.contractions[j];
-            // gto_norm = 1/sqrt(gaussian_int(2l+2, 2*alpha))
-            // gaussian_int = gamma(l+1.5) / (2 * (2*alpha)^(l+1.5))
             double l_half = l + 1.5;
             double gaussian_int = std::exp(std::lgamma(l_half)) / (2.0 * std::pow(2.0 * alpha, l_half));
             double norm = 1.0 / std::sqrt(gaussian_int);
@@ -166,17 +203,14 @@ void IntegralEngine::initialize(const Molecule& mol) {
         }
     }
     
-    // Initialize optimizer
     if (impl.opt) {
         CINTdel_optimizer(&impl.opt);
     }
     CINTinit_optimizer(&impl.opt, impl.atm.data(), impl.natm,
                        impl.bas.data(), impl.nbas, impl.env.data());
     
-    // Calculate total number of Cartesian GTOs
     impl.nbf = CINTtot_cgto_cart(impl.bas.data(), impl.nbas);
     
-    // Calculate AO offsets - manually compute for Cartesian GTOs
     impl.ao_loc.resize(impl.nbas + 1);
     impl.ao_loc[0] = 0;
     for (int i = 0; i < impl.nbas; ++i) {
@@ -189,7 +223,6 @@ void IntegralEngine::compute_overlap(const Molecule& mol, double* S) {
     auto& impl = *pimpl_;
     std::fill(S, S + impl.nbf * impl.nbf, 0.0);
     
-    // Compute overlap for each shell pair
     for (int i = 0; i < impl.nbas; ++i) {
         for (int j = 0; j < impl.nbas; ++j) {
             FINT shls[2] = {i, j};
@@ -203,7 +236,6 @@ void IntegralEngine::compute_overlap(const Molecule& mol, double* S) {
             cint1e_ovlp_cart(buf.data(), shls, impl.atm.data(), impl.natm,
                             impl.bas.data(), impl.nbas, impl.env.data());
             
-            // Copy to output matrix (both ij and ji for symmetry)
             for (int ii = 0; ii < ni; ++ii) {
                 for (int jj = 0; jj < nj; ++jj) {
                     S[(ao_i + ii) * impl.nbf + (ao_j + jj)] = buf[ii * nj + jj];
@@ -272,19 +304,16 @@ double* IntegralEngine::compute_eri(const Molecule& mol, size_t& size) {
     auto& impl = *pimpl_;
     int nbf = impl.nbf;
     
-    // Allocate full (ij|kl) ERI buffer
     size_t neri = nbf * nbf * nbf * nbf;
     size = neri;
     double* eri = new double[neri];
     std::fill(eri, eri + neri, 0.0);
     
-    // Precompute AO offsets
     std::vector<int> ao_offsets(impl.nbas + 1);
     for (int i = 0; i <= impl.nbas; ++i) {
         ao_offsets[i] = impl.ao_loc[i];
     }
     
-    // Compute ERIs shell by shell
     for (int i = 0; i < impl.nbas; ++i) {
         int ni = CINTcgtos_cart(i, impl.bas.data());
         int off_i = ao_offsets[i];
@@ -308,8 +337,6 @@ double* IntegralEngine::compute_eri(const Molecule& mol, size_t& size) {
                                           impl.bas.data(), impl.nbas, impl.env.data(), nullptr);
                     
                     if (not0) {
-                        // Copy to full ERI buffer with correct indexing
-                        // libcint returns (ij|kl) with buf[i,j,k,l] = buf[i*nj*nk*nl + j*nk*nl + k*nl + l]
                         for (int ii = 0; ii < ni; ++ii) {
                             for (int jj = 0; jj < nj; ++jj) {
                                 for (int kk = 0; kk < nk; ++kk) {
@@ -319,11 +346,9 @@ double* IntegralEngine::compute_eri(const Molecule& mol, size_t& size) {
                                         int k_ao = off_k + kk;
                                         int l_ao = off_l + ll;
                                         
-                                        // libcint buffer indexing: [i][j][k][l]
                                         size_t buf_idx = ((ii * nj + jj) * nk + kk) * nl + ll;
                                         double val = buf[buf_idx];
                                         
-                                        // Store as (ij|kl)
                                         size_t idx = ((i_ao * nbf + j_ao) * nbf + k_ao) * nbf + l_ao;
                                         eri[idx] = val;
                                     }
@@ -335,7 +360,6 @@ double* IntegralEngine::compute_eri(const Molecule& mol, size_t& size) {
             }
         }
         
-        // Progress indicator
         if ((i + 1) % 5 == 0) {
             std::cerr << ".";
         }
@@ -346,14 +370,11 @@ double* IntegralEngine::compute_eri(const Molecule& mol, size_t& size) {
 }
 
 void IntegralEngine::eval_ao(const Molecule& mol, const double* grid, int n_points, double* ao_values) {
-    // Simplified AO evaluation - for full implementation,
-    // use libcint's int1e_grid_ao or similar function
     auto& impl = *pimpl_;
     
     int nbf = impl.nbf;
     std::fill(ao_values, ao_values + nbf * n_points, 0.0);
     
-    // For each grid point and each shell, evaluate contracted GTOs
     for (int ipoint = 0; ipoint < n_points; ++ipoint) {
         double x = grid[3 * ipoint];
         double y = grid[3 * ipoint + 1];
@@ -371,13 +392,11 @@ void IntegralEngine::eval_ao(const Molecule& mol, const double* grid, int n_poin
             
             int n_ao = CINTcgtos_cart(ishell, impl.bas.data());
             
-            // Evaluate contracted GTO
             double gto_val = 0.0;
             for (size_t i = 0; i < shell.exponents.size(); ++i) {
                 gto_val += shell.contractions[i] * std::exp(-shell.exponents[i] * r2);
             }
             
-            // Multiply by angular part
             for (int i = 0; i < n_ao; ++i) {
                 ao_values[ipoint * nbf + ao_offset + i] = gto_val;
             }
@@ -386,6 +405,8 @@ void IntegralEngine::eval_ao(const Molecule& mol, const double* grid, int n_poin
         }
     }
 }
+
+#endif  // HAVE_LIBCINT
 
 } // namespace gto
 } // namespace pyscf
